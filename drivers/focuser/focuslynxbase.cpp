@@ -38,9 +38,7 @@ FocusLynxBase::FocusLynxBase()
     lynxModels["Optec TCF-Lynx 3"] = "OB";
     lynxModels["Optec TCF-Lynx 2 with Extended Travel"] = "OC";
     lynxModels["Optec Fast Focus Secondary Focuser"] = "OD";
-    lynxModels["Optec TCF-S Classic converted"] = "OE";
-    lynxModels["Optec TCF-S3 Classic converted"] = "OF";
-    //  lynxModels["Optec Gemini (reserved for future use)"] = "OG";
+
     lynxModels["Optec Leo"] = "OI";
     lynxModels["Optec Leo High-Torque"] = "OJ";
     lynxModels["Optec Sagitta"] = "OK";
