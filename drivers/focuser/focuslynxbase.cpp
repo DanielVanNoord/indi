@@ -3513,41 +3513,18 @@ bool FocusLynxBase::checkIfAbsoluteFocuser()
     deleteProperty(GotoSP.name);
     deleteProperty(SyncMandatorySP.name);
 
-    // Check if we have absolute or relative focusers
-    if (strstr(focusName, "TCF") ||
-            strstr(focusName, "Leo") ||
-            !strcmp(focusName, "FastFocus") ||
-            !strcmp(focusName, "FeatherTouch Motor Hi-Speed"))
-    {
-        LOG_DEBUG("Absolute focuser detected.");
+    /*
+    * All Focusers controlled by the FocusLynx hub are Absolute, they keep their positions accross power cycles. 
+    * The only way to desync one is to physically move it without using the hub. 
+    * Some (Device Types Ox) are also Homing, they perform a Homing procedure on startup. This allows them to automatically corrent for any physical moves
+    * Note that because these focusers sync themselves via the homing mechanism they cannot be synced.
+    */
+    LOG_DEBUG("Absolute focuser detected.");
         GotoSP.nsp = 2;
         isAbsolute = true;
-    }
-    else
-    {
-        LOG_DEBUG("Relative focuser detected.");
-        GotoSP.nsp = 1;
-
-        SyncMandatoryS[0].s = ISS_OFF;
-        SyncMandatoryS[1].s = ISS_ON;
-        defineSwitch(&SyncMandatorySP);
-
-        ISState syncEnabled = ISS_OFF;
-        if (IUGetConfigSwitch(getDeviceName(), "SYNC MANDATORY", "Enable", &syncEnabled) == 0)
-        {
-            SyncMandatoryS[0].s = syncEnabled;
-            SyncMandatoryS[1].s = syncEnabled == ISS_ON ? ISS_OFF : ISS_ON;
-        }
-
-        if (SyncMandatoryS[0].s == ISS_ON)
-            isSynced = false;
-        else
-            isSynced = true;
-
-        isAbsolute = false;
-    }
 
     defineSwitch(&GotoSP);
+
     return isAbsolute;
 }
 
