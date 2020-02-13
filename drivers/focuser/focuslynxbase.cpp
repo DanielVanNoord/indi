@@ -59,7 +59,7 @@ FocusLynxBase::FocusLynxBase()
     lynxModels["FeatherTouch Microtouch MSM Hi-Torque"] = "SP";
     lynxModels["FeatherTouch Micro for SCT"] = "SQ";
 
-    lynxModels["No Device"] = "ZZ";
+    lynxModels["No Device"] = "ZZ"; // This should be selectable. For example an end user may not (currently) have a focuser on Port 2.
 
     ModelS = nullptr;
 
