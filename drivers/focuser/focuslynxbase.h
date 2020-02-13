@@ -45,7 +45,7 @@
 #define HUB_SETTINGS_TAB "Device"
 
 #define VERSION                 1
-#define SUBVERSION              44
+#define SUBVERSION              45
 
 class FocusLynxBase : public INDI::Focuser
 {
@@ -101,8 +101,7 @@ class FocusLynxBase : public INDI::Focuser
 
         void setFocusTarget(const char *target);
         const char *getFocusTarget();
-        bool checkIfAbsoluteFocuser();
-        bool SyncMandatory(bool enable);
+		bool checkIfCanHome(const char* devType);
         virtual void debugTriggered(bool enable) override;
 
         // Device
@@ -243,13 +242,8 @@ class FocusLynxBase : public INDI::Focuser
         IText HFocusNameT[1] {};
         ITextVectorProperty HFocusNameTP;
 
-        // Request mandatory action of sync from user
-        ISwitch SyncMandatoryS[2];
-        ISwitchVectorProperty SyncMandatorySP;
-
-        bool isAbsolute;
-        bool isSynced;
         bool isHoming;
+		bool canHome;
 
         static const uint8_t LYNX_MAX { 64 };
 };
