@@ -220,8 +220,7 @@ void FocusLynxBase::ISGetProperties(const char *dev)
         return;
 
     INDI::Focuser::ISGetProperties(dev);
-
-    defineSwitch(&ModelSP);
+    
     if (isSimulation())
         loadConfig(true, "Model");
 }
@@ -236,6 +235,14 @@ bool FocusLynxBase::updateProperties()
         FocusMaxPosNP.p = IP_RW;
     else
         FocusMaxPosNP.p = IP_RO;
+    if (isConnected())
+    {
+        defineSwitch(&ModelSP);
+    }
+    else
+    {
+        deleteProperty(ModelSP.name);
+    }
 
     INDI::Focuser::updateProperties();
 
