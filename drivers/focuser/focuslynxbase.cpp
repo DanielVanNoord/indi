@@ -3495,5 +3495,6 @@ bool FocusLynxBase::checkIfCanHome(const char* devType)
         LOG_DEBUG("Non-Homing Absolute focuser detected.");
     }
 
+    defineSwitch(&GotoSP);
     return canHome;
 }
