@@ -44,23 +44,24 @@ FocusLynxBase::FocusLynxBase()
     lynxModels["Optec Leo"] = "OI";
     lynxModels["Optec Leo High-Torque"] = "OJ";
     lynxModels["Optec Sagitta"] = "OK";
-    lynxModels["FocusLynx QuickSync FT Hi-Torque"] = "FA";
-    lynxModels["FocusLynx QuickSync FT Hi-Speed"] = "FB";
+    lynxModels["Optec QuickSync Hi-Torque"] = "FA";
+    lynxModels["Optec QuickSync Hi-Speed"] = "FB";
+    lynxModels["Optec DirectSync Hi-Torque"] = "FD";
+    lynxModels["Optec DirectSync Hi-Speed"] = "FF";
 
-    //  lynxModels["FocusLynx QuickSync SV (reserved for future use)"] = "FC";
-    lynxModels["DirectSync TEC with bipolar motor - higher speed"] = "FD";
-    lynxModels["FocusLynx QuickSync  Long Travel Hi-Torque"] = "FE";
-    lynxModels["FocusLynx QuickSync Long Travel Hi-Speed"] = "FF";
+    lynxModels["Unipolar Focuser Motor - with Converter"] = "RA";
+
 
     // JM 2019-09-27: This was added after the discussion here
     // https://www.indilib.org/forum/focusers-filter-wheels/5739-starlight-instruments-focuser-boss-ii-hsm20.html
     lynxModels["FeatureTouch HSM Hi-Torque"] = "FA";
     lynxModels["FeatureTouch HSM Hi-Speed"] = "FB";
     lynxModels["FeatherTouch Motor PDMS"] = "FE";
-    lynxModels["FeatherTouch Motor Hi-Speed"] = "SO";
-    lynxModels["FeatherTouch Motor Hi-Torque"] = "SP";
-    lynxModels["Starlight Instruments - FTM with MicroTouch"] = "SQ";
-    lynxModels["Televue Focuser"] = "TA";
+    lynxModels["FeatherTouch Microtouch MSM Hi-Speed"] = "SO";
+    lynxModels["FeatherTouch Microtouch MSM Hi-Torque"] = "SP";
+    lynxModels["FeatherTouch Micro for SCT"] = "SQ";
+
+    lynxModels["No Device"] = "ZZ";
 
     ModelS = nullptr;
 
