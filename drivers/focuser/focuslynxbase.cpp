@@ -66,17 +66,16 @@ FocusLynxBase::FocusLynxBase()
     focusMoveRequest = 0;
     simPosition      = 0;
 
-    // Can move in Absolute & Relative motions, can AbortFocuser motion, can sync, and has variable speed.
+    // Can move in Absolute & Relative motions, can AbortFocuser motion, and has variable speed.
+    // Homing focusers cannot sync, they are absolute relative to the Home Position
     FI::SetCapability(FOCUSER_CAN_ABORT    |
                       FOCUSER_CAN_ABS_MOVE |
                       FOCUSER_CAN_REL_MOVE |
-                      FOCUSER_CAN_SYNC     |
                       FOCUSER_CAN_REVERSE  |
                       FOCUSER_HAS_BACKLASH);
 
-    isAbsolute = false;
-    isSynced   = false;
     isHoming   = false;
+    canHome    = false;
 
     simStatus[STATUS_MOVING]   = ISS_OFF;
     simStatus[STATUS_HOMING]   = ISS_OFF;
@@ -136,12 +135,6 @@ bool FocusLynxBase::initProperties()
     //    IUFillNumber(&FocusBacklashN[0], "Steps", "", "%.f", 0, 99, 5., 0.);
     //    IUFillNumberVector(&FocusBacklashNP, FocusBacklashN, 1, getDeviceName(), "BACKLASH", "Backlash", FOCUS_SETTINGS_TAB, IP_RW, 0,
     //                       IPS_IDLE);
-
-    // Enable/Disable Sync Mandatory for relative focuser
-    IUFillSwitch(&SyncMandatoryS[0], "Enable", "Enable", isSynced == false ? ISS_ON : ISS_OFF);
-    IUFillSwitch(&SyncMandatoryS[1], "Disable", "Disable", isSynced == true ? ISS_ON : ISS_OFF);
-    IUFillSwitchVector(&SyncMandatorySP, SyncMandatoryS, 2, getDeviceName(), "SYNC MANDATORY", "Sync Mandatory",
-                       FOCUS_SETTINGS_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
     // Max Travel relative focusers
     //    IUFillNumber(&MaxTravelN[0], "Ticks", "", "%.f", 0, 100000, 0., 0.);
@@ -238,8 +231,8 @@ void FocusLynxBase::ISGetProperties(const char *dev)
 * ***********************************************************************************/
 bool FocusLynxBase::updateProperties()
 {
-    // For absolute focusers the vector is set to RO, as we get value from the HUB
-    if (isAbsolute == false)
+    // Homing focusers have a defined ranges, other motors can have their range extended
+    if (canHome == false)
         FocusMaxPosNP.p = IP_RW;
     else
         FocusMaxPosNP.p = IP_RO;
@@ -346,8 +339,11 @@ bool FocusLynxBase::ISNewSwitch(const char *dev, const char *name, ISState *stat
             else
                 LOG_INFO("Focuser model set. Please connect now...");
 
-            // Check if we have absolute or relative focusers
-            checkIfAbsoluteFocuser();
+            int index = IUFindOnSwitchIndex(&ModelSP);    
+
+            // Check if the current model can home
+            checkIfCanHome(index > 0 ? lynxModels[ModelS[index].name].c_str() : "ZZ");
+
             //Read the config for this new model form the HUB
             getFocusConfig();
 
@@ -485,20 +481,6 @@ bool FocusLynxBase::ISNewSwitch(const char *dev, const char *name, ISState *stat
         //            IDSetSwitch(&ReverseSP, nullptr);
         //            return true;
         //        }
-
-        // Sync Mandatory
-        if (!strcmp(SyncMandatorySP.name, name))
-        {
-            IUUpdateSwitch(&SyncMandatorySP, states, names, n);
-
-            if (SyncMandatory(SyncMandatoryS[0].s == ISS_ON))
-                SyncMandatorySP.s = IPS_OK;
-            else
-                SyncMandatorySP.s = IPS_ALERT;
-
-            IDSetSwitch(&SyncMandatorySP, nullptr);
-            return true;
-        }
     }
     return INDI::Focuser::ISNewSwitch(dev, name, states, names, n);
 }
@@ -791,7 +773,7 @@ bool FocusLynxBase::getFocusConfig()
     // Get Max Position
     if (isSimulation())
     {
-        if (isAbsolute == false)
+        if (canHome == false)
             // Value with high limit to give freedom to user of emulation range
             snprintf(response, 32, "Max Pos = %06d\n", 100000);
         else
@@ -857,12 +839,12 @@ bool FocusLynxBase::getFocusConfig()
     if (!isSimulation())
     {
         //Extract the code from the response value
-        std::string tmpString;
-        tmpString.assign(response + 11, 2);
+        std::string devString;
+        devString.assign(response + 11, 2);
         int count = 0;
 
         //As "ZZ" is not exist in lynxModel, not need interator, 'No focuser' is known as first in ModelS
-        if(tmpString != "ZZ")
+        if(devString != "ZZ")
         {
             // If not 'No Focuser' then do iterator
             // iterate throught all elements in std::map<std::string, std::string> and search the index from the code.
@@ -870,7 +852,7 @@ bool FocusLynxBase::getFocusConfig()
             while(it != lynxModels.end())
             {
                 count++;
-                if (it->second == tmpString)
+                if (it->second == devString)
                     break;
                 it++;
             }
@@ -882,8 +864,8 @@ bool FocusLynxBase::getFocusConfig()
         ModelS[count].s = ISS_ON;
         IDSetSwitch(&ModelSP, nullptr);
 
-        // If focuser is relative, we only exposure "Center" command as it cannot home
-        checkIfAbsoluteFocuser();
+        // If focuser is non-homing, we only exposure "Center" command as it cannot home
+        checkIfCanHome(devString.c_str());
 
         LOGF_DEBUG("Index focuser : %d", count);
     } // end if (!isSimulation)
@@ -1247,7 +1229,7 @@ bool FocusLynxBase::getFocusStatus()
 
         StatusL[STATUS_HOMING].s = _isHoming ? IPS_BUSY : IPS_IDLE;
         // For relative focusers home is not applicable.
-        if (isAbsolute == false)
+        if (canHome == false)
             StatusL[STATUS_HOMING].s = IPS_IDLE;
 
         // We set that isHoming in process, but we don't set it to false here it must be reset in TimerHit
@@ -1277,7 +1259,7 @@ bool FocusLynxBase::getFocusStatus()
 
         StatusL[STATUS_HOMED].s = isHomed ? IPS_OK : IPS_IDLE;
         // For relative focusers home is not applicable.
-        if (isAbsolute == false)
+        if (canHome == false)
             StatusL[STATUS_HOMED].s = IPS_IDLE;
 
         // #4 FF Detected?
@@ -2190,9 +2172,6 @@ bool FocusLynxBase::center()
     int nbytes_read    = 0;
     int nbytes_written = 0;
 
-    if (isAbsolute == false)
-        return (MoveAbsFocuser(FocusAbsPosN[0].max / 2) != IPS_ALERT);
-
     memset(response, 0, sizeof(response));
 
     snprintf(cmd, LYNX_MAX, "<%sCENTER>", getFocusTarget());
@@ -2777,7 +2756,6 @@ bool FocusLynxBase::SyncFocuser(uint32_t ticks)
         if (!strcmp(response, "SET"))
         {
             LOGF_INFO("Setting current position to %d", ticks);
-            isSynced = true;
             return true;
         }
         else
@@ -3042,13 +3020,6 @@ IPState FocusLynxBase::MoveFocuser(FocusDirection dir, int speed, uint16_t durat
     int nbytes_read    = 0;
     int nbytes_written = 0;
 
-    // Relative focusers must be synced initially.
-    if (isAbsolute == false && isSynced == false)
-    {
-        LOG_ERROR("Relative focusers must be synced. Please sync before issuing any motion commands.");
-        return IPS_ALERT;
-    }
-
     memset(response, 0, sizeof(response));
 
     snprintf(cmd, 16, "<%sM%cR%c>", getFocusTarget(), (dir == FOCUS_INWARD) ? 'I' : 'O', (speed == 0) ? '0' : '1');
@@ -3117,13 +3088,6 @@ IPState FocusLynxBase::MoveAbsFocuser(uint32_t targetTicks)
     int nbytes_read    = 0;
     int nbytes_written = 0;
 
-    // Relative focusers must be synced initially.
-    if (isAbsolute == false && isSynced == false)
-    {
-        LOG_ERROR("Relative focusers must be synced. Please sync before issuing any motion commands.");
-        return IPS_ALERT;
-    }
-
     targetPosition = targetTicks;
 
     memset(response, 0, sizeof(response));
@@ -3181,13 +3145,6 @@ IPState FocusLynxBase::MoveAbsFocuser(uint32_t targetTicks)
 IPState FocusLynxBase::MoveRelFocuser(FocusDirection dir, uint32_t ticks)
 {
     uint32_t newPosition = 0;
-
-    // Relative focusers must be synced initially.
-    if (isAbsolute == false && isSynced == false)
-    {
-        LOG_DEBUG("Relative focusers must be synced. Please sync before issuing any motion commands.");
-        return IPS_ALERT;
-    }
 
     if (dir == FOCUS_INWARD)
         newPosition = FocusAbsPosN[0].value - ticks;
@@ -3410,11 +3367,7 @@ bool FocusLynxBase::saveConfigItems(FILE *fp)
     //IUSaveConfigSwitch(fp, &FocusBacklashSP);
     //IUSaveConfigNumber(fp, &FocusBacklashNP);
     IUSaveConfigNumber(fp, &StepSizeNP);
-    if (isAbsolute == false)
-    {
-        //IUSaveConfigNumber(fp, &MaxTravelNP);
-        IUSaveConfigSwitch(fp, &SyncMandatorySP);
-    }
+
     return true;
 }
 
@@ -3507,32 +3460,33 @@ int FocusLynxBase::getVersion(int *major, int *minor, int *sub)
 /************************************************************************************
  *
 * ***********************************************************************************/
-bool FocusLynxBase::checkIfAbsoluteFocuser()
+bool FocusLynxBase::checkIfCanHome(const char* devType)
 {
-    const char *focusName = IUFindOnSwitch(&ModelSP)->label;
-    deleteProperty(GotoSP.name);
-    deleteProperty(SyncMandatorySP.name);
-
     /*
     * All Focusers controlled by the FocusLynx hub are Absolute, they keep their positions accross power cycles. 
     * The only way to desync one is to physically move it without using the hub. 
     * Some (Device Types Ox) are also Homing, they perform a Homing procedure on startup. This allows them to automatically corrent for any physical moves
     * Note that because these focusers sync themselves via the homing mechanism they cannot be synced.
     */
-    LOG_DEBUG("Absolute focuser detected.");
-        GotoSP.nsp = 2;
-        isAbsolute = true;
 
-    defineSwitch(&GotoSP);
+    deleteProperty(GotoSP.name);
+    //Currently All and Only "Ox" device types are homing focusers and this rule will not change for 2.*.* and 3.*.* firmware versions
+    //This may be added to a config in a future major firmware update
+    if(devType[0]=='O')
+    {
+        canHome = true;
+        GotoSP.nsp = 2; //Show Home as these can Home
+        FI::SetCapability(FI::GetCapability() & ~FOCUSER_CAN_SYNC); //Homing focusers cannot sync, they are absolute relative to the home position
 
-    return isAbsolute;
-}
+        LOG_DEBUG("Homing Absolute focuser detected.");
+    }
+    else
+    {
+        canHome = false;
+        GotoSP.nsp = 1; //Don't show Home
+        FI::SetCapability(FI::GetCapability() | FOCUSER_CAN_SYNC); //Absolute non-homing focusers can sync
+        LOG_DEBUG("Non-Homing Absolute focuser detected.");
+    }
 
-/************************************************************************************
- *
-* ***********************************************************************************/
-bool FocusLynxBase::SyncMandatory(bool enable)
-{
-    isSynced = !enable;
-    return true;
+    return canHome;
 }
