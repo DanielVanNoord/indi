@@ -49,15 +49,14 @@ FocusLynxBase::FocusLynxBase()
 
     lynxModels["Unipolar Focuser Motor - with Converter"] = "RA";
 
-
     // JM 2019-09-27: This was added after the discussion here
     // https://www.indilib.org/forum/focusers-filter-wheels/5739-starlight-instruments-focuser-boss-ii-hsm20.html
-    lynxModels["FeatureTouch HSM Hi-Torque"] = "FA";
-    lynxModels["FeatureTouch HSM Hi-Speed"] = "FB";
-    lynxModels["FeatherTouch Motor PDMS"] = "FE";
-    lynxModels["FeatherTouch Microtouch MSM Hi-Speed"] = "SO";
-    lynxModels["FeatherTouch Microtouch MSM Hi-Torque"] = "SP";
-    lynxModels["FeatherTouch Micro for SCT"] = "SQ";
+    lynxModels["Starlight FeatureTouch HSM Hi-Torque"] = "FA";
+    lynxModels["Starlight FeatureTouch HSM Hi-Speed"] = "FB";
+    lynxModels["Starlight FeatherTouch Motor PDMS"] = "FE";
+    lynxModels["Starlight FeatherTouch Microtouch MSM Hi-Speed"] = "SO";
+    lynxModels["Starlight FeatherTouch Microtouch MSM Hi-Torque"] = "SP";
+    lynxModels["Starlight FeatherTouch Micro for SCT"] = "SQ";
 
     lynxModels["No Device"] = "ZZ"; // This should be selectable. For example an end user may not (currently) have a focuser on Port 2.
 
